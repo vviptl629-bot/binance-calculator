@@ -1,0 +1,15 @@
+{
+  "name": "币安开仓计算器",
+  "short_name": "开仓计算器",
+  "description": "U本位永续合约开仓计算器 · 保证金/止盈止损/盈亏比",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0e11",
+  "theme_color": "#0b0e11",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

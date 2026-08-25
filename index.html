@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>币安开仓计算器</title>
+<meta name="theme-color" content="#0b0e11">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="开仓计算器">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="icon-192.png?v=10">
+<link rel="icon" type="image/png" href="icon-192.png?v=10">
+<link rel="manifest" href="manifest.json?v=10">
+<script>
+if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); }); }
+</script>
+<style>
+  :root{
+    --bg:#0b0e11; --panel:#161a1e; --panel2:#1e242b; --line:#2b3139;
+    --txt:#eaecef; --sub:#848e9c; --gold:#F0B90B; --green:#0ecb81; --red:#f6465d;
+    --blue:#3b9eff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;font-size:15px;padding:14px;padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+  .wrap{max-width:480px;margin:0 auto}
+  h1{font-size:17px;margin:4px 0 2px;font-weight:700;letter-spacing:.3px}
+  .tagline{color:var(--sub);font-size:12px;margin-bottom:12px}
+  .row{display:flex;gap:8px;margin-bottom:10px}
+  .row>*{flex:1}
+  .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{flex:1;background:none;border:0;color:var(--sub);padding:10px 0;font-size:14px;font-weight:600;cursor:pointer}
+  .seg button.on{color:#0b0e11}
+  .seg.long button.on{background:var(--green)}
+  .seg.short button.on{background:var(--red)}
+  .seg.plain button.on{background:var(--gold);color:#0b0e11}
+  .field{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+  .field label{display:block;color:var(--sub);font-size:12px;margin-bottom:6px}
+  .field input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--txt);font-size:18px;padding:8px 10px;outline:none}
+  .field input:focus{border-color:var(--gold)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .presets{display:flex;gap:6px;margin-top:8px}
+  .presets button{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:7px;color:var(--sub);padding:7px 0;font-size:13px;cursor:pointer}
+  .presets button.on{background:var(--gold);color:#0b0e11;border-color:var(--gold);font-weight:600}
+  /* 核心结果 */
+  .hero{background:linear-gradient(160deg,#1a1f25,#12161a);border:1px solid var(--line);border-radius:14px;padding:18px 14px;text-align:center;margin:6px 0 10px}
+  .hero .lbl{color:var(--sub);font-size:13px;margin-bottom:4px}
+  .hero .big{font-size:46px;font-weight:800;line-height:1.05;color:var(--gold)}
+  .hero .big .u{font-size:20px;color:var(--sub);font-weight:600;margin-left:4px}
+  .hero .small{color:var(--sub);font-size:13px;margin-top:8px}
+  .hero .small b{color:var(--txt);font-weight:600}
+  /* 止盈止损 */
+  .tpsl{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}
+  .tpsl .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+  .tpsl .card.sl{border-color:rgba(246,70,93,.5)}
+  .tpsl .card.tp{border-color:rgba(14,203,129,.5)}
+  .tpsl .k{font-size:12px;color:var(--sub);margin-bottom:4px}
+  .tpsl .v{font-size:24px;font-weight:800}
+  .tpsl .sl .v{color:var(--red)}
+  .tpsl .tp .v{color:var(--green)}
+  .tpsl .pct{font-size:12px;color:var(--sub);margin-top:3px}
+  .tpsl .pnl{font-size:13px;font-weight:700;margin-top:3px}
+  .tpsl .pnl.loss{color:var(--red)}
+  .tpsl .pnl.profit{color:var(--green)}
+  .rr{text-align:center;font-size:13px;color:var(--sub);margin:8px 0 14px}
+  .rr b{color:var(--gold);font-size:16px;font-weight:700;margin:0 4px}
+  /* 小字明细 */
+  .tiny{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--sub);line-height:1.9}
+  .tiny .line{display:flex;justify-content:space-between}
+  .tiny .line b{color:var(--txt);font-weight:600}
+  .warn{background:rgba(246,70,93,.12);border:1px solid rgba(246,70,93,.4);color:#ffb3bd;border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:10px;display:none}
+  .warn.show{display:block}
+  .toggle{width:100%;background:none;border:1px dashed var(--line);border-radius:8px;color:var(--sub);font-size:13px;padding:9px 0;margin-bottom:10px;cursor:pointer}
+  .toggle.on{border-style:solid;color:var(--txt)}
+  .foot{color:var(--sub);font-size:11px;text-align:center;margin-top:14px;line-height:1.5;padding-bottom:12px}
+
+  /* 手机端适配：间距紧凑、字号正常 */
+  @media (max-width: 420px){
+    body{padding:10px}
+    h1{font-size:16px;margin:2px 0 1px}
+    .tagline{font-size:12px;margin-bottom:9px}
+    .row{gap:6px;margin-bottom:8px}
+    .seg button{font-size:14px;padding:9px 0}
+    .grid2{gap:8px}
+    .field{padding:9px 10px;margin-bottom:7px;border-radius:8px}
+    .field label{font-size:12px;margin-bottom:5px}
+    .field input{font-size:17px;padding:7px 8px}
+    .presets{gap:5px;margin-top:6px}
+    .presets button{font-size:13px;padding:6px 0;border-radius:6px}
+    .hero{padding:11px 8px;margin:4px 0 6px;border-radius:12px}
+    .hero .big{font-size:38px}
+    .hero .big .u{font-size:18px}
+    .hero .small{font-size:12px;margin-top:6px}
+    .rr{font-size:13px;margin:4px 0 6px}
+    .rr b{font-size:15px}
+    .tpsl{gap:8px;margin-bottom:4px}
+    .tpsl .card{padding:9px 6px;border-radius:10px}
+    .tpsl .k{font-size:12px;margin-bottom:3px}
+    .tpsl .v{font-size:22px}
+    .tpsl .pct{font-size:12px}
+    .tpsl .pnl{font-size:13px}
+    .toggle{font-size:13px;padding:8px 0;margin-bottom:6px}
+    .tiny{padding:9px 10px;font-size:12px}
+    .foot{font-size:11px;margin-top:9px;line-height:1.4;padding-bottom:8px}
+  }
+  @media (max-width: 360px){
+    .hero .big{font-size:34px}
+    .tpsl .v{font-size:20px}
+  }
+  /* 安装引导提示条 */
+  .install-tip{position:fixed;left:0;right:0;bottom:0;z-index:50;display:none;align-items:center;gap:10px;background:var(--panel);border-top:1px solid var(--line);padding:10px 12px;font-size:13px}
+  .install-tip.show{display:flex}
+  .install-tip .t{flex:1;color:var(--txt);line-height:1.4}
+  .install-tip .t b{color:var(--gold)}
+  .install-tip button{background:var(--gold);color:#0b0e11;border:0;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer}
+  .install-tip .x{background:none;border:0;color:var(--sub);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
+
+  /* 云端同步卡片（沿用币安配色） */
+  .sync{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:0;margin-top:12px;overflow:hidden}
+  .sync .head{display:flex;align-items:center;gap:8px;padding:11px 12px;cursor:pointer;user-select:none}
+  .sync .head .ttl{flex:1;font-size:13px;font-weight:600;color:var(--txt)}
+  .sync .head .dot{width:7px;height:7px;border-radius:50%;background:var(--sub)}
+  .sync .head .dot.on{background:var(--green)}
+  .sync .head .arw{color:var(--sub);font-size:12px}
+  .sync .body{display:none;padding:0 12px 12px;border-top:1px solid var(--line)}
+  .sync.open .body{display:block}
+  .sync .hint{color:var(--sub);font-size:11.5px;line-height:1.7;margin:10px 0 8px}
+  .sync .hint a{color:var(--gold);text-decoration:none}
+  .sync label{display:block;color:var(--sub);font-size:11.5px;margin:8px 0 4px}
+  .sync input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--txt);font-size:13px;padding:9px 10px;outline:none}
+  .sync input:focus{border-color:var(--gold)}
+  .sync .btns{display:flex;gap:8px;margin-top:10px}
+  .sync .btns button{flex:1;border:0;border-radius:8px;padding:10px 0;font-size:13px;font-weight:700;cursor:pointer}
+  .sync .btns .primary{background:var(--gold);color:#0b0e11}
+  .sync .btns .ghost{background:var(--panel2);color:var(--sub);border:1px solid var(--line)}
+  .sync-status{font-size:11.5px;margin-top:9px;color:var(--sub);line-height:1.6;word-break:break-all}
+  .sync-status.ok{color:var(--green)}
+  .sync-status.warn{color:var(--gold)}
+  .sync-status.err{color:var(--red)}
+  .sync .gistinfo{font-size:11.5px;color:var(--sub);line-height:1.7;margin-top:9px;word-break:break-all}
+  .sync .gistinfo a{color:var(--gold);text-decoration:none}
+  .sync .gistinfo b{color:var(--txt)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>币安永续 · 开仓计算器</h1>
+  <div class="tagline">VIP0 费率 · 做多/做空 · U 本位</div>
+
+  <div class="row">
+    <div class="seg long" id="dirSeg">
+      <button data-d="long" class="on">做多</button>
+      <button data-d="short">做空</button>
+    </div>
+    <div class="seg plain" id="modeSeg">
+      <button data-m="risk" class="on">风险预算</button>
+      <button data-m="full">满杠杆</button>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="field">
+      <label>账户本金 (U)</label>
+      <input type="number" id="capital" value="70" min="0" step="1">
+    </div>
+    <div class="field">
+      <label>杠杆 (倍)</label>
+      <input type="number" id="leverage" value="3" min="1" max="125" step="1">
+    </div>
+  </div>
+  <div class="presets" id="levPresets">
+    <button data-lev="1">1x</button>
+    <button data-lev="2">2x</button>
+    <button data-lev="3" class="on">3x</button>
+    <button data-lev="5">5x</button>
+    <button data-lev="10">10x</button>
+  </div>
+
+  <div class="grid2" style="margin-top:10px">
+    <div class="field">
+      <label>币种价格 (USDT)</label>
+      <input type="number" id="price" value="88" min="0" step="0.01">
+    </div>
+    <div class="field">
+      <label>止损幅度（价格变动 %）</label>
+      <input type="number" id="sl" value="2" min="0.1" max="50" step="0.1">
+    </div>
+  </div>
+  <div class="presets" id="slPresets">
+    <button data-sl="1">1%</button>
+    <button data-sl="1.5">1.5%</button>
+    <button data-sl="2" class="on">2%</button>
+  </div>
+
+  <div class="field" style="margin-top:10px">
+    <label>盈亏比（风险 : 收益）</label>
+    <div class="presets" id="rrSeg">
+      <button data-rr="1:1">1 : 1</button>
+      <button data-rr="1:2" class="on">1 : 2</button>
+      <button data-rr="custom">1 : 任意</button>
+    </div>
+    <div id="customTpWrap" style="display:none;margin-top:8px">
+      <input type="number" id="customTp" value="5" min="0.1" max="50" step="0.1" placeholder="盈亏比倍数，如 1:3 填 3">
+    </div>
+  </div>
+
+  <div class="warn" id="warn"></div>
+
+  <!-- 核心：开仓大小（保证金） -->
+  <div class="hero">
+    <div class="lbl">开仓大小（保证金占用）</div>
+    <div class="big" id="rMargin">23.33<span class="u">U</span></div>
+    <div class="small">名义价值 <b id="rNotional">70.00 U</b> ｜ 开仓 <b id="rQty">0.7955 枚</b></div>
+  </div>
+
+  <!-- 止盈 / 止损（USDT） -->
+  <div class="rr">盈亏比 = <b id="rrText">1 : 2</b></div>
+  <div class="tpsl">
+    <div class="card sl">
+      <div class="k">止损价</div>
+      <div class="v" id="rSlPrice">86.24</div>
+      <div class="pct" id="rSlPct">-2.0%</div>
+      <div class="pnl loss" id="rSlU">亏损 1.47 U</div>
+    </div>
+    <div class="card tp">
+      <div class="k">止盈价</div>
+      <div class="v" id="rTpPrice">91.52</div>
+      <div class="pct" id="rTpPct">+4.0%</div>
+      <div class="pnl profit" id="rTpU">盈利 2.73 U</div>
+    </div>
+  </div>
+
+  <!-- 小字明细（默认折叠） -->
+  <button class="toggle" id="dtToggle">展开详情 ▾</button>
+  <div class="tiny" id="tiny" style="display:none">
+    <div class="line"><span>止损净亏损</span><b id="rNetLoss">1.47 U</b></div>
+    <div class="line"><span>止盈净收益</span><b id="rNetProfit">2.73 U</b></div>
+    <div class="line"><span>手续费合计</span><b id="rFee">0.07 U</b></div>
+    <div class="line"><span>强平价</span><b id="rLiq">59.02</b></div>
+    <div class="line"><span>距强平缓冲</span><b id="rBuffer">32.9%</b></div>
+  </div>
+
+  <!-- 云端同步（GitHub Gist · 跨设备共享参数） -->
+  <div class="sync" id="syncCard">
+    <div class="head" id="syncHead">
+      <span class="dot" id="syncDot"></span>
+      <span class="ttl">云端同步 · 跨设备</span>
+      <span class="arw" id="syncArw">▾</span>
+    </div>
+    <div class="body">
+      <div class="hint">
+        用 GitHub Gist 把<b>本金 / 杠杆 / 价格 / 止损 / 盈亏比</b>等参数同步到其他设备。<br>
+        需要一个带 <b>gist</b> 权限的 Token（<a href="https://github.com/settings/tokens/new?scopes=gist&description=binance-calculator" target="_blank" rel="noopener">点此创建</a>）。Token 只存在本机浏览器。
+      </div>
+      <div id="syncForm">
+        <label>GitHub Token（需 gist 权限）</label>
+        <input type="password" id="syncToken" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+        <label>Gist ID（首台设备留空自动创建；第二台粘贴同一 ID）</label>
+        <input type="text" id="syncGistId" placeholder="留空即自动新建私有 Gist" autocomplete="off">
+        <div class="btns">
+          <button class="primary" onclick="syncEnable()">启用并同步</button>
+          <button class="ghost" onclick="syncDiag()">诊断</button>
+        </div>
+      </div>
+      <div id="syncConnected" style="display:none">
+        <div class="gistinfo" id="syncGistInfo"></div>
+        <div class="btns">
+          <button class="primary" onclick="syncNow()">立即同步</button>
+          <button class="ghost" onclick="syncDisable()">断开</button>
+        </div>
+      </div>
+      <div class="sync-status" id="syncStatus"></div>
+      <pre class="sync-status" id="syncDiagOut" style="display:none;white-space:pre-wrap"></pre>
+    </div>
+  </div>
+
+  <div class="foot">默认风险预算 2% · 参数存本机，可选 Gist 跨设备同步</div>
+</div>
+
+<div class="install-tip" id="installTip">
+  <div class="t" id="installTipText"></div>
+  <button id="installBtn" style="display:none">安装</button>
+  <button class="x" id="installClose">×</button>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const state={direction:'long',mode:'risk',rr:'1:2'};
+
+/* ===================== 参数本地持久化 ===================== */
+const DATA_KEY='bnc_v1';
+const NUM_IDS=['capital','leverage','price','sl','customTp'];
+function collectData(){
+  const o={updatedAt:Date.now(),direction:state.direction,mode:state.mode,rr:state.rr};
+  NUM_IDS.forEach(id=>{const el=$(id);if(el)o[id]=el.value;});
+  return o;
+}
+function saveData(){
+  try{localStorage.setItem(DATA_KEY,JSON.stringify(collectData()));}catch(e){}
+}
+function applyData(d){
+  if(!d)return;
+  if(d.direction)state.direction=d.direction;
+  if(d.mode)state.mode=d.mode;
+  if(d.rr)state.rr=d.rr;
+  NUM_IDS.forEach(id=>{const el=$(id);if(el&&d[id]!==undefined&&d[id]!=='')el.value=d[id];});
+  syncButtonsUI();
+}
+function syncButtonsUI(){
+  $('dirSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.d===state.direction));
+  $('modeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===state.mode));
+  $('rrSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.rr===state.rr));
+  $('customTpWrap').style.display=state.rr==='custom'?'block':'none';
+  const lv=String(parseFloat($('leverage').value));
+  $('levPresets').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.lev===lv));
+  const sv=String(parseFloat($('sl').value));
+  $('slPresets').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.sl===sv));
+}
+function persist(){saveData();schedulePush();}
+
+// 费率 VIP0
+const rate=type=> type==='maker'?0.0002:0.0005;
+
+function calc(){
+  const capital=Math.max(0,parseFloat($('capital').value)||0);
+  const lev=Math.max(1,parseFloat($('leverage').value)||1);
+  const sl=Math.max(0,parseFloat($('sl').value)||0)/100;
+  const price=Math.max(0,parseFloat($('price').value)||0);
+  const mmr=0.004;
+  const er=rate('taker'),xr=rate('taker');
+  const isLong=state.direction==='long';
+
+  // 止盈幅度由盈亏比决定（custom 填的是倍数，如 1:3 填 3）
+  let tp;
+  if(state.rr==='1:1') tp=sl;
+  else if(state.rr==='1:2') tp=2*sl;
+  else {
+    const mult=Math.max(0,parseFloat($('customTp').value)||0);
+    tp=mult*sl;
+  }
+
+  // 名义价值
+  let notional,margin,warn='';
+  if(state.mode==='risk'){
+    const rb=0.02; // 风险预算固定 2% 本金
+    let desired=rb>0?(capital*rb)/sl:0;
+    const maxN=capital*lev;
+    if(desired>maxN){desired=maxN;warn='已超杠杆上限，按满杠杆开仓。';}
+    notional=desired;margin=notional/lev;
+  }else{
+    notional=capital*lev;margin=capital;
+  }
+
+  const hasPrice=price>0;
+  const qty=hasPrice?notional/price:NaN;
+  const fee=notional*(er+xr);
+  const netLoss=notional*sl+fee;
+  const netProfit=notional*tp-fee;
+
+  const slPrice=hasPrice?(isLong?price*(1-sl):price*(1+sl)):NaN;
+  const tpPrice=hasPrice?(isLong?price*(1+tp):price*(1-tp)):NaN;
+  const liq=hasPrice?(isLong?price*(1-1/lev+mmr):price*(1+1/lev-mmr)):NaN;
+  const liqDist=(1/lev-mmr)*100;
+
+  // 核心
+  $('rMargin').innerHTML=margin.toFixed(2)+'<span class="u">U</span>';
+  $('rNotional').textContent=notional.toFixed(2)+' U';
+  $('rQty').textContent=hasPrice?qty.toFixed(4)+' 枚':'未填价格';
+
+  // 盈亏比文本（risk : reward，标准写法）
+  let rrLabel;
+  if(state.rr==='1:1') rrLabel='1 : 1';
+  else if(state.rr==='1:2') rrLabel='1 : 2';
+  else rrLabel='1 : '+(parseFloat($('customTp').value)||0).toFixed(1);
+  $('rrText').textContent=rrLabel;
+
+  // 止盈止损 USDT
+  $('rSlPrice').textContent=hasPrice?slPrice.toFixed(2):'—';
+  $('rSlPct').textContent=(isLong?'−':'+')+(sl*100).toFixed(1)+'%';
+  $('rTpPrice').textContent=hasPrice?tpPrice.toFixed(2):'—';
+  $('rTpPct').textContent=(isLong?'+':'−')+(tp*100).toFixed(1)+'%';
+
+  // 卡片上直接显示盈亏 U 数
+  $('rSlU').textContent='亏损 '+netLoss.toFixed(2)+' U';
+  $('rTpU').textContent='盈利 '+netProfit.toFixed(2)+' U';
+
+  // 小字
+  $('rNetLoss').textContent=netLoss.toFixed(2)+' U';
+  $('rNetProfit').textContent=netProfit.toFixed(2)+' U';
+  $('rFee').textContent=fee.toFixed(2)+' U';
+  $('rLiq').textContent=hasPrice?liq.toFixed(2):'—';
+  $('rBuffer').textContent=liqDist.toFixed(1)+'%';
+
+  const w=$('warn');w.textContent=warn;w.classList.toggle('show',!!warn);
+}
+
+// 事件
+$('dirSeg').addEventListener('click',e=>{
+  if(e.target.dataset.d){state.direction=e.target.dataset.d;
+    $('dirSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.d===state.direction));recalc();}
+});
+$('modeSeg').addEventListener('click',e=>{
+  if(e.target.dataset.m){state.mode=e.target.dataset.m;
+    $('modeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===state.mode));recalc();}
+});
+$('rrSeg').addEventListener('click',e=>{
+  if(e.target.dataset.rr){state.rr=e.target.dataset.rr;
+    $('rrSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.rr===state.rr));
+    $('customTpWrap').style.display=state.rr==='custom'?'block':'none';recalc();}
+});
+$('levPresets').addEventListener('click',e=>{
+  if(e.target.dataset.lev){$('leverage').value=e.target.dataset.lev;
+    $('levPresets').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.lev===e.target.dataset.lev));recalc();}
+});
+$('slPresets').addEventListener('click',e=>{
+  if(e.target.dataset.sl){$('sl').value=e.target.dataset.sl;
+    $('slPresets').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.sl===e.target.dataset.sl));recalc();}
+});
+['capital','leverage','price','sl','customTp'].forEach(id=>$(id).addEventListener('input',calc));
+
+// 详情折叠
+$('dtToggle').addEventListener('click',()=>{
+  const t=$('dtToggle'), box=$('tiny');
+  const open=box.style.display==='none';
+  box.style.display=open?'block':'none';
+  t.classList.toggle('on',open);
+  t.textContent=open?'收起详情 ▴':'展开详情 ▾';
+});
+// 安装引导：加载即显示手动引导，命中 beforeinstallprompt 时升级为「安装」按钮
+let deferredPrompt=null;
+const tip=$('installTip'), tipText=$('installTipText'), installBtn=$('installBtn');
+const isStandalone=()=> window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+function showTip(html, withBtn){
+  tipText.innerHTML=html;
+  installBtn.style.display = withBtn ? '' : 'none';
+  tip.classList.add('show');
+}
+if(!isStandalone()){
+  showTip('手机浏览器打开后，点右上角 <b>⋮ 菜单 → 添加到主屏幕</b>，即可全屏当 App 用', false);
+}
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault(); deferredPrompt=e;
+  showTip('可安装为 App · 全屏无浏览器栏', true);
+});
+installBtn.addEventListener('click', async ()=>{
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  try{ await deferredPrompt.userChoice; }catch(e){}
+  deferredPrompt=null; tip.classList.remove('show');
+});
+$('installClose').addEventListener('click', ()=> tip.classList.remove('show'));
+window.addEventListener('appinstalled', ()=> tip.classList.remove('show'));
+
+/* ===================== GitHub Gist 云端同步（同工作台方案） ===================== */
+var SYNC_KEY='bnc_sync_v1', SYNC_FILE='bnc_data.json';
+var sync={enabled:false,token:'',gistId:'',_t:null,_retry:null,_lastOk:0};
+try{var _s=JSON.parse(localStorage.getItem(SYNC_KEY)||'{}');sync.enabled=!!_s.enabled;sync.token=_s.token||'';sync.gistId=_s.gistId||'';}catch(e){}
+function saveSyncCfg(){try{localStorage.setItem(SYNC_KEY,JSON.stringify({enabled:sync.enabled,token:sync.token,gistId:sync.gistId}));}catch(e){}}
+function syncStatus(msg,cls){var el=$('syncStatus');if(!el)return;el.textContent=msg||'';el.className='sync-status'+(cls?' '+cls:'');}
+function setDot(){var d=$('syncDot');if(d)d.classList.toggle('on',!!(sync.enabled&&sync.token&&sync.gistId));}
+async function gistReq(method,id,body){
+  var url=id?('https://api.github.com/gists/'+id):'https://api.github.com/gists';
+  var opt={method:method,headers:{'Authorization':'Bearer '+sync.token,'Content-Type':'application/json','Accept':'application/vnd.github+json'}};
+  if(body)opt.body=JSON.stringify(body);
+  var r=await fetch(url,opt);
+  if(r.status===401)throw new Error('GitHub 401 · Token 已失效，请重新生成带 gist 权限的 Token');
+  if(r.status===403)throw new Error('GitHub 403 · Token 缺少 gist 权限，请重新生成时勾选 gist');
+  if(r.status===404&&id)throw new Error('GitHub 404 · Gist ID 不存在或无权访问');
+  if(!r.ok)throw new Error('GitHub '+r.status);
+  return r.json();
+}
+async function pushSync(){
+  if(!sync.enabled||!sync.token)return;
+  try{
+    var body=JSON.stringify(collectData());
+    if(!sync.gistId){
+      var g=await gistReq('POST',null,{description:'币安开仓计算器 · 参数同步',public:false,files:{[SYNC_FILE]:{content:body}}});
+      sync.gistId=g.id;saveSyncCfg();
+    }else{
+      await gistReq('PATCH',sync.gistId,{files:{[SYNC_FILE]:{content:body}}});
+    }
+    showGistInfo();setDot();
+    syncStatus('已同步 '+new Date().toLocaleTimeString(),'ok');
+    sync._lastOk=Date.now();
+    if(sync._retry){clearInterval(sync._retry);sync._retry=null;}
+  }catch(e){
+    if(/40[134]/.test(e&&e.message||'')){if(sync._retry){clearInterval(sync._retry);sync._retry=null;}syncStatus('⚠️ '+(e.message||'同步失败'),'err');return;}
+    var off=(typeof navigator!=='undefined'&&navigator.onLine===false);
+    syncStatus(off?'离线，改动将在联网后上传':'同步失败，将自动重试：'+(e&&e.message?e.message:e),'warn');
+    startPendingRetry();
+  }
+}
+function startPendingRetry(){
+  if(sync._retry)return;
+  sync._retry=setInterval(function(){if(!sync.enabled||!sync.token){clearInterval(sync._retry);sync._retry=null;return;}pushSync();},6000);
+}
+function schedulePush(){if(!sync.enabled||!sync.token)return;clearTimeout(sync._t);sync._t=setTimeout(pushSync,800);}
+async function pullSync(silent){
+  if(!sync.enabled||!sync.token||!sync.gistId)return;
+  try{
+    var g=await gistReq('GET',sync.gistId);
+    var f=g.files&&g.files[SYNC_FILE];if(!f||!f.content)return;
+    var inc=JSON.parse(f.content);
+    var localAt=0;try{localAt=(JSON.parse(localStorage.getItem(DATA_KEY)||'{}').updatedAt)||0;}catch(e){}
+    // 远端更新才覆盖本地；正在输入时不打断
+    var ae=document.activeElement;
+    var typing=ae&&(ae.tagName==='INPUT');
+    if((inc.updatedAt||0)>localAt&&!typing){
+      applyData(inc);
+      try{localStorage.setItem(DATA_KEY,JSON.stringify(inc));}catch(e){}
+      calc();
+      if(!silent)syncStatus('已拉取远端参数 '+new Date().toLocaleTimeString(),'ok');
+    }else if(!silent){
+      syncStatus('本地已是最新 '+new Date().toLocaleTimeString(),'ok');
+    }
+    sync._lastOk=Date.now();
+  }catch(e){
+    if(/40[134]/.test(e&&e.message||'')){if(sync._retry){clearInterval(sync._retry);sync._retry=null;}syncStatus('⚠️ '+(e.message||'拉取失败'),'err');return;}
+    if(!silent)syncStatus('拉取失败：'+(e&&e.message?e.message:e),'err');
+  }
+}
+async function syncNow(){
+  if(!sync.enabled||!sync.token){syncStatus('请先启用同步','err');return;}
+  syncStatus('同步中…');await pullSync();await pushSync();
+}
+var _autoPull=null;
+function startAutoPull(){
+  if(_autoPull)return;
+  _autoPull=setInterval(function(){if(typeof navigator!=='undefined'&&navigator.onLine===false)return;pullSync(true);},45000);
+}
+function showGistInfo(){
+  var el=$('syncGistInfo');if(!el)return;
+  el.innerHTML=sync.gistId?('已绑定私有 Gist：<a href="https://gist.github.com/'+sync.gistId+'" target="_blank" rel="noopener">'+sync.gistId.slice(0,12)+'…</a><br>另一台设备填<b>相同 Token + 此 Gist ID</b> 即共享同一份参数。'):'';
+}
+function showFormUI(){
+  var f=$('syncForm'),c=$('syncConnected');
+  if(f)f.style.display='';if(c)c.style.display='none';
+  setDot();
+}
+function showConnectedUI(){
+  var f=$('syncForm'),c=$('syncConnected');
+  if(f)f.style.display='none';if(c)c.style.display='';
+  showGistInfo();setDot();
+}
+function syncEnable(){
+  var tok=$('syncToken').value.trim();
+  var gid=$('syncGistId').value.trim();
+  if(!tok){syncStatus('请输入 Token','err');return;}
+  sync.token=tok;sync.gistId=gid;sync.enabled=true;saveSyncCfg();
+  syncStatus('连接中…');
+  (async function(){
+    try{
+      if(gid)await pullSync(true);
+      await pushSync();
+      showConnectedUI();startAutoPull();
+      syncStatus('已启用并同步 ✅','ok');
+    }catch(e){syncStatus((e&&e.message)||'启用失败','err');}
+  })();
+}
+function syncDisable(){
+  if(!confirm('断开后参数仍保留在本机与 Gist。确定断开？'))return;
+  sync.enabled=false;sync.token='';sync.gistId='';saveSyncCfg();
+  if(_autoPull){clearInterval(_autoPull);_autoPull=null;}
+  $('syncToken').value='';$('syncGistId').value='';
+  showFormUI();syncStatus('已断开云端同步','ok');
+}
+function syncDiag(){
+  var out=$('syncDiagOut');if(!out)return;out.style.display='';
+  var lines=['== Gist 同步诊断 =='];
+  if(!sync.enabled||!sync.token){
+    lines.push('✗ 未启用：填入带 gist 权限的 Token（Gist ID 可留空自动创建），点「启用并同步」');
+  }else{
+    lines.push('✓ Token 已配置（'+sync.token.length+' 字符）');
+    lines.push('Gist ID：'+(sync.gistId||'(空，将自动创建)'));
+    lines.push('最近成功同步：'+(sync._lastOk?new Date(sync._lastOk).toLocaleString():'从未'));
+  }
+  lines.push('网络：'+((typeof navigator!=='undefined'&&navigator.onLine===false)?'离线':'在线'));
+  out.textContent=lines.join('\n');
+}
+function syncInit(){
+  if(sync.enabled&&sync.token){
+    $('syncToken').value=sync.token;
+    if(sync.gistId){$('syncGistId').value=sync.gistId;showConnectedUI();}else showFormUI();
+    startAutoPull();
+    pullSync(true);
+  }else{showFormUI();}
+}
+// 同步卡片折叠
+$('syncHead').addEventListener('click',function(){
+  var c=$('syncCard');
+  c.classList.toggle('open');
+  $('syncArw').textContent=c.classList.contains('open')?'▴':'▾';
+});
+
+/* ===================== 启动 ===================== */
+function recalc(){calc();persist();}
+(function boot(){
+  try{applyData(JSON.parse(localStorage.getItem(DATA_KEY)||'null'));}catch(e){}
+  calc();          // 启动只计算，不写回、不推送
+  syncInit();
+})();
+</script>
+</body>
+</html>
