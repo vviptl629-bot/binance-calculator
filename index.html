@@ -307,6 +307,7 @@ function applyData(d){
   syncButtonsUI();
 }
 function syncButtonsUI(){
+  $('dirSeg').className='seg '+state.direction;
   $('dirSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.d===state.direction));
   $('modeSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===state.mode));
   $('rrSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.rr===state.rr));
@@ -397,6 +398,7 @@ function calc(){
 // 事件
 $('dirSeg').addEventListener('click',e=>{
   if(e.target.dataset.d){state.direction=e.target.dataset.d;
+    $('dirSeg').className='seg '+state.direction;
     $('dirSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.d===state.direction));recalc();}
 });
 $('modeSeg').addEventListener('click',e=>{
@@ -416,7 +418,7 @@ $('slPresets').addEventListener('click',e=>{
   if(e.target.dataset.sl){$('sl').value=e.target.dataset.sl;
     $('slPresets').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.sl===e.target.dataset.sl));recalc();}
 });
-['capital','leverage','price','sl','customTp'].forEach(id=>$(id).addEventListener('input',calc));
+['capital','leverage','price','sl','customTp'].forEach(id=>$(id).addEventListener('input',recalc));
 
 // 详情折叠
 $('dtToggle').addEventListener('click',()=>{
