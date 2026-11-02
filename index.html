@@ -493,9 +493,9 @@ async function pushSync(){
 }
 function startPendingRetry(){
   if(sync._retry)return;
-  sync._retry=setInterval(function(){if(!sync.enabled||!sync.token){clearInterval(sync._retry);sync._retry=null;return;}pushSync();},120000);
+  sync._retry=setInterval(function(){if(!sync.enabled||!sync.token){clearInterval(sync._retry);sync._retry=null;return;}pushSync();},600000);
 }
-function schedulePush(){if(!sync.enabled||!sync.token)return;clearTimeout(sync._t);sync._t=setTimeout(pushSync,Math.max(800,(sync._lp||0)+60000-Date.now()));}
+function schedulePush(){if(!sync.enabled||!sync.token)return;clearTimeout(sync._t);sync._t=setTimeout(pushSync,Math.max(3000,(sync._lp||0)+3600000-Date.now()));}
 async function pullSync(silent){
   if(!sync.enabled||!sync.token||!sync.gistId)return;
   try{
@@ -527,8 +527,12 @@ async function syncNow(){
 var _autoPull=null;
 function startAutoPull(){
   if(_autoPull)return;
-  _autoPull=setInterval(function(){if(typeof navigator!=='undefined'&&navigator.onLine===false)return;pullSync(true);},300000);
+  _autoPull=setInterval(function(){if(typeof navigator!=='undefined'&&navigator.onLine===false)return;pullSync(true);},3600000);
 }
+/* 有待推送的定时任务时，切后台/关页面就立刻执行，不再等满 1 小时 */
+var _flush=function(){ if(sync.enabled&&sync.token&&sync._t){ clearTimeout(sync._t); sync._t=null; pushSync(); } };
+document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='hidden') _flush(); });
+window.addEventListener('pagehide', _flush);
 function showGistInfo(){
   var el=$('syncGistInfo');if(!el)return;
   el.innerHTML=sync.gistId?('已绑定私有 Gist：<a href="https://gist.github.com/'+sync.gistId+'" target="_blank" rel="noopener">'+sync.gistId.slice(0,12)+'…</a><br>另一台设备填<b>相同 Token + 此 Gist ID</b> 即共享同一份参数。'):'';
