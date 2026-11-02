@@ -482,7 +482,7 @@ async function pushSync(){
     }
     showGistInfo();setDot();
     syncStatus('已同步 '+new Date().toLocaleTimeString(),'ok');
-    sync._lastOk=Date.now();
+    sync._lastOk=Date.now();sync._lp=Date.now();
     if(sync._retry){clearInterval(sync._retry);sync._retry=null;}
   }catch(e){
     if(/40[134]/.test(e&&e.message||'')){if(sync._retry){clearInterval(sync._retry);sync._retry=null;}syncStatus('⚠️ '+(e.message||'同步失败'),'err');return;}
@@ -495,7 +495,7 @@ function startPendingRetry(){
   if(sync._retry)return;
   sync._retry=setInterval(function(){if(!sync.enabled||!sync.token){clearInterval(sync._retry);sync._retry=null;return;}pushSync();},120000);
 }
-function schedulePush(){if(!sync.enabled||!sync.token)return;clearTimeout(sync._t);sync._t=setTimeout(pushSync,800);}
+function schedulePush(){if(!sync.enabled||!sync.token)return;clearTimeout(sync._t);sync._t=setTimeout(pushSync,Math.max(800,(sync._lp||0)+60000-Date.now()));}
 async function pullSync(silent){
   if(!sync.enabled||!sync.token||!sync.gistId)return;
   try{
