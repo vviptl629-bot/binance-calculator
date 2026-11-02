@@ -493,7 +493,7 @@ async function pushSync(){
 }
 function startPendingRetry(){
   if(sync._retry)return;
-  sync._retry=setInterval(function(){if(!sync.enabled||!sync.token){clearInterval(sync._retry);sync._retry=null;return;}pushSync();},6000);
+  sync._retry=setInterval(function(){if(!sync.enabled||!sync.token){clearInterval(sync._retry);sync._retry=null;return;}pushSync();},120000);
 }
 function schedulePush(){if(!sync.enabled||!sync.token)return;clearTimeout(sync._t);sync._t=setTimeout(pushSync,800);}
 async function pullSync(silent){
@@ -527,7 +527,7 @@ async function syncNow(){
 var _autoPull=null;
 function startAutoPull(){
   if(_autoPull)return;
-  _autoPull=setInterval(function(){if(typeof navigator!=='undefined'&&navigator.onLine===false)return;pullSync(true);},45000);
+  _autoPull=setInterval(function(){if(typeof navigator!=='undefined'&&navigator.onLine===false)return;pullSync(true);},300000);
 }
 function showGistInfo(){
   var el=$('syncGistInfo');if(!el)return;
